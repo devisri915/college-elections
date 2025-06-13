@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>College President Election 2025</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; text-align: center; padding: 40px; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px; cursor: pointer; }
+    .hidden { display: none; }
+    #results { margin-top: 40px; max-width: 500px; margin-left: auto; margin-right: auto; }
+  </style>
+</head>
+<body>
+  <h1>College President Election 2025</h1>
+  <div id="login">
+    <p>Please log in with your college email to vote:</p>
+    <button onclick="signIn()">Login with Google</button>
+  </div>
+
+  <div id="voteSection" class="hidden">
+    <h2>Welcome, <span id="userEmail"></span></h2>
+    <p>Select your candidate:</p>
+    <button onclick="castVote('Alice')">Alice</button>
+    <button onclick="castVote('Bob')">Bob</button>
+    <button onclick="castVote('Charlie')">Charlie</button>
+  </div>
+
+  <div id="results">
+    <h2>Live Results</h2>
+    <canvas id="voteChart" width="400" height="300"></canvas>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCFqtbeQreu8QNFGaSMZrdLfVdggfRHFQ",
+      authDomain: "collegeelection2025.firebaseapp.com",
+      databaseURL: "https://collegeelection2025-default-rtdb.firebaseio.com",
+      projectId: "collegeelection2025",
+      storageBucket: "collegeelection2025.appspot.com",
+      messagingSenderId: "749593468361",
+      appId: "1:749593468361:web:6011c5f40eaf52bd9e1c18"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const loginDiv = document.getElementById('login');
+    const voteSection = document.getElementById('voteSection');
+    const userEmailSpan = document.getElementById('userEmail');
+
+    let currentUser = null;
+
+    function signIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(result => {
+          currentUser = result.user;
+          
+          // Optional: Check for college domain
+          // if (!currentUser.email.endsWith('@yourcollege.edu')) {
+          //   alert("Only college email is allowed.");
+          //   auth.signOut();
+          //   return;
+          // }
+
+          userEmailSpan.textContent = currentUser.email;
+          loginDiv.classList.add('hidden');
+          checkIfVoted(currentUser.uid);
+        })
+        .catch(error => {
+          console.error("Login failed:", error.message);
+        });
+    }
+
+    function checkIfVoted(uid) {
+      db.ref('votes/' + uid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          voteSection.innerHTML = "<h3>You have already voted. Thank you!</h3>";
+        } else {
+          voteSection.classList.remove('hidden');
+        }
+      });
+    }
+
+    function castVote(candidate) {
+      if (!currentUser) return;
+      const uid = currentUser.uid;
+      db.ref('votes/' + uid).set({
+        email: currentUser.email,
+        candidate: candidate
+      }).then(() => {
+        voteSection.innerHTML = `<h3>Vote submitted for ${candidate}. Thank you!</h3>`;
+      });
+    }
+
+    // Live Chart
+    const ctx = document.getElementById('voteChart').getContext('2d');
+    const voteChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Alice', 'Bob', 'Charlie'],
+        datasets: [{
+          label: 'Votes',
+          data: [0, 0, 0],
+          backgroundColor: ['#4CAF50', '#2196F3', '#FFC107']
+        }]
+      },
+      options: {
+        scales: { y: { beginAtZero: true, stepSize: 1 } },
+        plugins: { legend: { display: false } }
+      }
+
+    });
+
+    function updateChart() {
+      const counts = { Alice: 0, Bob: 0, Charlie: 0 };
+      db.ref('votes').on('value', snapshot => {
+        snapshot.forEach(child => {
+          const vote = child.val().candidate;
+          if (counts.hasOwnProperty(vote)) {
+            counts[vote]++;
+          }
+        });
+        voteChart.data.datasets[0].data = [counts.Alice, counts.Bob, counts.Charlie];
+        voteChart.update();
+      });
+    }
+
+    updateChart();
+  </script>
+</body>
+</html>
+
