@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>College President Election 2025</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #3f87a6, #ebf8e1, #f69d3c);
+      text-align: center;
+      padding: 40px;
+      color: #333;
+    }
+    button {
+      padding: 12px 25px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .hidden {
+      display: none;
+    }
+    #resultText {
+      font-size: 18px;
+      margin-top: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>College President Election 2025</h1>
+
+  <div id="login">
+    <p>Please login with your <strong>@bvcits.edu.in</strong> email to vote:</p>
+    <button onclick="signIn()">Login with Google</button>
+  </div>
+
+  <div id="voteSection" class="hidden">
+    <h2>Welcome, <span id="userEmail"></span></h2>
+    <p>Select your candidate:</p>
+    <button onclick="castVote('Devisri')">Devisri</button>
+    <button onclick="castVote('Praneetha')">Praneetha</button>
+    <button onclick="castVote('Ruchitha')">Ruchitha</button>
+  </div>
+
+  <div id="resultText" class="hidden"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCFqtbeQreu8QNFGaSMZrdLfVdggfRHFQ",
+      authDomain: "collegeelection2025.firebaseapp.com",
+      databaseURL: "https://collegeelection2025-default-rtdb.firebaseio.com",
+      projectId: "collegeelection2025",
+      storageBucket: "collegeelection2025.appspot.com",
+      messagingSenderId: "749593468361",
+      appId: "1:749593468361:web:6011c5f40eaf52bd9e1c18"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    const loginDiv = document.getElementById('login');
+    const voteSection = document.getElementById('voteSection');
+    const userEmailSpan = document.getElementById('userEmail');
+    const resultText = document.getElementById('resultText');
+
+    let currentUser = null;
+
+    function signIn() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .then(result => {
+          currentUser = result.user;
+          const email = currentUser.email;
+
+          // Check if email is from bvcits.edu.in domain
+          if (!email.endsWith("@bvcits.edu.in")) {
+            alert("Only @bvcits.edu.in emails are allowed.");
+            auth.signOut();
+            return;
+          }
+
+          userEmailSpan.textContent = email;
+          loginDiv.classList.add('hidden');
+          checkIfVoted(currentUser.uid);
+        })
+        .catch(error => {
+          console.error("Login error:", error.message);
+        });
+    }
+
+    function checkIfVoted(uid) {
+      db.ref('votes/' + uid).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          resultText.innerHTML = `<strong>You have already voted. Thank you!</strong>`;
+          resultText.classList.remove('hidden');
+        } else {
+          voteSection.classList.remove('hidden');
+        }
+      });
+    }
+
+    function castVote(candidate) {
+      if (!currentUser) return;
+      const uid = currentUser.uid;
+      db.ref('votes/' + uid).set({
+        email: currentUser.email,
+        candidate: candidate
+      }).then(() => {
+        voteSection.classList.add('hidden');
+        resultText.innerHTML = `<strong>Your vote for ${candidate} has been recorded. Thank you!</strong>`;
+        resultText.classList.remove('hidden');
+      });
+    }
+  </script>
+</body>
+</html>
